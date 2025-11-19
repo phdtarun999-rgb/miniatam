@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mini ATM</title>
+  <style>
+    :root{
+      --bg:#0f172a; --card:#0b1220; --accent:#06b6d4; --muted:#94a3b8; --glass: rgba(255,255,255,0.03);
+      --success: #10b981; --danger:#ef4444;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg),#071022);color:#e6eef8}
+    .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px}
+    .atm{
+      width:100%;max-width:980px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);border-radius:14px;padding:24px;display:grid;grid-template-columns:360px 1fr;gap:20px;box-shadow:0 10px 30px rgba(2,6,23,0.7);
+    }
+    @media (max-width:900px){.atm{grid-template-columns:1fr;max-width:520px}}
+
+    /* Left panel */
+    .panel{background:var(--card);border-radius:12px;padding:18px}
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#7c3aed);display:flex;align-items:center;justify-content:center;font-weight:700;color:#042027}
+    h1{font-size:18px;margin:0}
+    p.muted{color:var(--muted);margin:6px 0 0;font-size:13px}
+
+    /* Screen */
+    .screen{background:var(--glass);padding:14px;border-radius:10px;margin-top:14px;min-height:160px;display:flex;flex-direction:column;gap:10px}
+    .balance{display:flex;align-items:center;justify-content:space-between}
+    .balance strong{font-size:22px}
+    .small{font-size:13px;color:var(--muted)}
+    .log{flex:1;overflow:auto;padding-top:8px}
+    .log-item{padding:8px;border-radius:8px;margin-bottom:8px;background:linear-gradient(180deg, rgba(255,255,255,0.015), transparent);font-size:13px}
+
+    /* Keypad and controls */
+    .controls{display:flex;gap:10px;margin-top:12px}
+    .btn{flex:1;padding:10px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.04);cursor:pointer;color:inherit}
+    .btn.primary{background:linear-gradient(90deg,var(--accent),#7c3aed);color:#042027;border:0}
+    .btn.warn{background:linear-gradient(90deg,#f59e0b,#ef4444);color:#041018}
+
+    /* Right panel */
+    .actions{display:flex;flex-direction:column;gap:12px}
+    .card{background:linear-gradient(135deg, rgba(255,255,255,0.02), transparent);border-radius:12px;padding:18px}
+    label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    input[type="number"], input[type="password"], input[type="text"]{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+    .row{display:flex;gap:10px}
+    .ghost{background:transparent;border:1px dashed rgba(255,255,255,0.03);padding:8px;border-radius:8px;font-size:13px}
+
+    /* keypad */
+    .keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
+    .key{padding:14px;border-radius:8px;background:rgba(255,255,255,0.02);text-align:center;font-weight:600;cursor:pointer;user-select:none}
+    .key:active{transform:scale(0.98)}
+
+    footer{font-size:12px;color:var(--muted);text-align:center;margin-top:12px}
+
+    /* tiny helpers */
+    .muted-inline{color:var(--muted);font-size:13px}
+    .ok{color:var(--success)}
+    .err{color:var(--danger)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="atm">
+      <div class="panel">
+        <div class="brand">
+          <div class="logo">ATM</div>
+          <div>
+            <h1>Mini ATM</h1>
+            <p class="muted">Simple, responsive demo — runs in your browser.</p>
+          </div>
+        </div>
+
+        <div class="screen" id="screen">
+          <div class="balance">
+            <div>
+              <div class="small">Current Balance</div>
+              <strong id="balance">₹ 5,000.00</strong>
+            </div>
+            <div class="small muted-inline">Account: <span id="acct">**** 1234</span></div>
+          </div>
+
+          <div class="log" id="log">
+            
+          </div>
+
+          <div class="controls">
+            <button class="btn" id="btn-history">Clear History</button>
+            <button class="btn primary" id="btn-refresh">Refresh</button>
+            <button class="btn warn" id="btn-reset">Reset Account</button>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;display:flex;gap:10px;">
+          <div class="ghost">Status: <span id="status">Ready</span></div>
+          <div class="ghost">Mode: <span id="mode">Normal</span></div>
+        </div>
+
+        <footer>Built with plain HTML/CSS/JS — data persists to your browser (localStorage).</footer>
+      </div>
+
+      <div class="actions">
+        <div class="card">
+          <label for="pin">Enter PIN</label>
+          <input type="password" id="pin" placeholder="4-digit PIN" maxlength="6" inputmode="numeric">
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button class="btn primary" id="btn-login">Unlock</button>
+            <button class="btn" id="btn-lock">Lock</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <label for="amount">Amount (₹)</label>
+          <input type="number" id="amount" placeholder="e.g. 500">
+          <div class="row" style="margin-top:8px;">
+            <button class="btn" id="btn-deposit">Deposit</button>
+            <button class="btn" id="btn-withdraw">Withdraw</button>
+          </div>
+
+          <div style="margin-top:10px">
+            <label class="small">Quick Presets</label>
+            <div class="row" style="margin-top:6px;">
+              <button class="btn" data-amt="100">₹100</button>
+              <button class="btn" data-amt="500">₹500</button>
+              <button class="btn" data-amt="1000">₹1000</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <label>Numeric Keypad</label>
+          <div class="keypad" id="keypad">
+            <div class="key">1</div><div class="key">2</div><div class="key">3</div>
+            <div class="key">4</div><div class="key">5</div><div class="key">6</div>
+            <div class="key">7</div><div class="key">8</div><div class="key">9</div>
+            <div class="key">.</div><div class="key">0</div><div class="key" id="key-del">⌫</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <label>Account Controls</label>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button class="btn" id="btn-change-pin">Change PIN</button>
+            <button class="btn" id="btn-export">Export</button>
+          </div>
+          <p class="muted" style="margin-top:10px">Tip: This demo stores data locally. Use Export to copy account JSON.</p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Simple Mini ATM logic using localStorage
+    const STORAGE_KEY = 'mini_atm_account_v1';
+
+    const defaults = {
+      pin: '1234',
+      balance: 5000,
+      acct: '123456789012',
+      locked: true,
+      history: []
+    };
+
+    // load or init
+    function load(){
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) { localStorage.setItem(STORAGE_KEY, JSON.stringify(defaults)); return structuredClone(defaults); }
+      try{ return JSON.parse(raw); }catch(e){ localStorage.setItem(STORAGE_KEY, JSON.stringify(defaults)); return structuredClone(defaults); }
+    }
+
+    function save(state){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+    let state = load();
+
+    // DOM
+    const el = id=>document.getElementById(id);
+    const balanceEl = el('balance');
+    const acctEl = el('acct');
+    const logEl = el('log');
+    const statusEl = el('status');
+    const modeEl = el('mode');
+
+    function formatAmt(a){
+      return '₹ ' + Number(a).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+    }
+
+    function render(){
+      balanceEl.textContent = formatAmt(state.balance);
+      acctEl.textContent = '**** ' + state.acct.slice(-4);
+      statusEl.textContent = state.locked ? 'Locked' : 'Unlocked';
+      modeEl.textContent = state.locked ? 'Secure' : 'Normal';
+
+      // history
+      logEl.innerHTML='';
+      if(state.history.length===0){ logEl.innerHTML = '<div class="log-item">No transactions yet</div>'; return }
+      state.history.slice().reverse().forEach(item=>{
+        const d = new Date(item.t).toLocaleString();
+        const node = document.createElement('div'); node.className='log-item';
+        node.innerHTML = `<div style=\"display:flex;justify-content:space-between;align-items:center\"><div><strong>${item.title}</strong><div class=\"small\">${item.note||''}</div></div><div class=\"small\">${d}</div></div>`;
+        logEl.appendChild(node);
+      })
+    }
+
+    function pushHistory(title,note){ state.history.push({t:Date.now(),title,note}); if(state.history.length>200) state.history.shift(); save(state); render(); }
+
+    // initial render
+    render();
+
+    // actions
+    el('btn-refresh').addEventListener('click',()=>{ state = load(); render(); flash('Refreshed') });
+    el('btn-history').addEventListener('click',()=>{ state.history=[]; save(state); render(); flash('History cleared') });
+    el('btn-reset').addEventListener('click',()=>{ if(!confirm('Reset account to defaults?')) return; state = structuredClone(defaults); save(state); render(); flash('Account reset') });
+
+    el('btn-login').addEventListener('click',()=>{
+      const pin = el('pin').value.trim();
+      if(pin === state.pin){ state.locked=false; save(state); render(); pushHistory('Unlocked','User entered correct PIN'); flash('Unlocked',true) }
+      else{ flash('Incorrect PIN',false,true); pushHistory('Failed Unlock','Incorrect PIN attempt'); }
+      el('pin').value='';
+    });
+
+    el('btn-lock').addEventListener('click',()=>{ state.locked=true; save(state); render(); pushHistory('Locked','Manually locked'); flash('Locked',true) });
+
+    function numericInputAdd(val){ const a = el('amount'); if(val==='.' && a.value.includes('.')) return; a.value = (a.value||'') + val; }
+    document.querySelectorAll('.key').forEach(k=>{
+      k.addEventListener('click',()=>{
+        const t = k.textContent.trim();
+        if(t==='⌫') { const a=el('amount'); a.value = a.value.slice(0,-1); }
+        else numericInputAdd(t);
+      })
+    })
+
+    document.querySelectorAll('[data-amt]').forEach(b=> b.addEventListener('click', ()=> el('amount').value = b.dataset.amt ));
+
+    el('btn-deposit').addEventListener('click',()=>{
+      if(state.locked){ flash('Unlock first',false,true); return }
+      const amt = Number(el('amount').value);
+      if(!amt || amt<=0){ flash('Enter valid amount',false,true); return }
+      state.balance = Number((state.balance + amt).toFixed(2));
+      save(state);
+      pushHistory('Deposit',`+ ${formatAmt(amt)}`);
+      el('amount').value='';
+      flash('Deposit successful',true);
+    })
+
+    el('btn-withdraw').addEventListener('click',()=>{
+      if(state.locked){ flash('Unlock first',false,true); return }
+      const amt = Number(el('amount').value);
+      if(!amt || amt<=0){ flash('Enter valid amount',false,true); return }
+      if(amt > state.balance){ flash('Insufficient funds',false,true); pushHistory('Failed Withdrawal',`Attempted ${formatAmt(amt)} but balance ${formatAmt(state.balance)}`); return }
+      state.balance = Number((state.balance - amt).toFixed(2));
+      save(state);
+      pushHistory('Withdrawal',`- ${formatAmt(amt)}`);
+      el('amount').value='';
+      flash('Withdrawal successful',true);
+    })
+
+    el('btn-change-pin').addEventListener('click',()=>{
+      if(state.locked){ flash('Unlock first',false,true); return }
+      const newPin = prompt('Enter new 4-digit PIN (numbers only):');
+      if(!newPin) return;
+      if(!/^\d{4,6}$/.test(newPin)){ alert('PIN must be 4-6 digits'); return }
+      state.pin = newPin; save(state); pushHistory('PIN Changed','User updated PIN'); flash('PIN updated',true);
+    })
+
+    el('btn-export').addEventListener('click',()=>{
+      const copy = JSON.stringify(state, null, 2);
+      navigator.clipboard.writeText(copy).then(()=>alert('Account JSON copied to clipboard'));
+    })
+
+    function flash(msg,ok=false,err=false){
+      const s = el('status'); s.textContent = msg; s.className = '';
+      if(ok) s.classList.add('ok');
+      if(err) s.classList.add('err');
+      setTimeout(()=>{ s.textContent = state.locked ? 'Locked' : 'Unlocked'; s.className=''; }, 2200);
+    }
+
+    // first-time helper
+    if(!localStorage.getItem(STORAGE_KEY)){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaults)); state = load(); render(); pushHistory('Account created','Demo account initialised');
+    }
+
+  </script>
+</body>
+</html>
